@@ -1,0 +1,42 @@
+.despesas-container {
+    max-width: 400px;
+    margin: 0 auto;
+    padding: 40px;
+    background-color: #f9f9f9;
+    border-radius: 10px;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+    text-align: center;
+}
+
+.despesas-title {
+    font-size: 2rem;
+    color: #282c34;
+    margin-bottom: 20px;
+}
+
+.despesas-form {
+    display: flex;
+    flex-direction: column;
+}
+
+.despesas-input {
+    padding: 10px;
+    margin-bottom: 15px;
+    font-size: 1rem;
+    border: 1px solid #ccc;
+    border-radius: 5px;
+}
+
+.despesas-button {
+    padding: 10px;
+    font-size: 1rem;
+    background-color: #007bff;
+    color: white;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+}
+
+.despesas-button:hover {
+    background-color: #0056b3;
+}

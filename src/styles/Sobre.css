@@ -1,0 +1,31 @@
+.sobre-container {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    height: 100vh;
+    /* Garante que o container ocupe 100% da altura da viewport */
+    padding: 20px;
+    background-color: #f5f5f5;
+}
+
+.sobre-title {
+    font-size: 2.5rem;
+    color: #282c34;
+    margin-bottom: 20px;
+}
+
+.sobre-text {
+    font-size: 1.2rem;
+    color: #333;
+    margin-bottom: 15px;
+}
+
+.sobre-text a {
+    color: #007bff;
+    text-decoration: none;
+}
+
+.sobre-text a:hover {
+    text-decoration: underline;
+}
