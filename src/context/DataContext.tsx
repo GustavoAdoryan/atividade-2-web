@@ -1,20 +1,23 @@
-import { addDoc, collection, deleteDoc, doc, onSnapshot } from 'firebase/firestore';
-import React, { createContext, useContext, useEffect, useState } from 'react';
-import { db } from '../firebase.ts'; // Importe a configuração do Firestore
+import React, { createContext, useContext, useState, useEffect } from 'react';
+import { db } from '../firebase.ts';
+import { collection, addDoc, deleteDoc, doc, onSnapshot, query, where, updateDoc } from 'firebase/firestore';
+import { useAuth } from './AuthContext.tsx';
 
-interface FinancialData {
+export interface FinancialData {
     id: string;
     description: string;
     amount: number;
 }
 
-interface DataContextType {
+export interface DataContextType {
     incomes: FinancialData[];
     expenses: FinancialData[];
     addIncome: (income: Omit<FinancialData, 'id'>) => Promise<void>;
     addExpense: (expense: Omit<FinancialData, 'id'>) => Promise<void>;
     removeIncome: (id: string) => Promise<void>;
     removeExpense: (id: string) => Promise<void>;
+    updateIncome: (id: string, updatedIncome: Omit<FinancialData, 'id'>) => Promise<void>;
+    updateExpense: (id: string, updatedExpense: Omit<FinancialData, 'id'>) => Promise<void>;
 }
 
 const DataContext = createContext<DataContextType | undefined>(undefined);
@@ -22,56 +25,42 @@ const DataContext = createContext<DataContextType | undefined>(undefined);
 export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
     const [incomes, setIncomes] = useState<FinancialData[]>([]);
     const [expenses, setExpenses] = useState<FinancialData[]>([]);
+    const { user } = useAuth();
 
     useEffect(() => {
-        const unsubscribeIncomes = onSnapshot(collection(db, 'incomes'), (snapshot) => {
-            const incomeData = snapshot.docs.map(doc => {
-                const data = doc.data();
-                if (typeof data.description !== 'string' || typeof data.amount !== 'number') {
-                    console.warn(`Documento inválido encontrado na coleção 'incomes':`, doc.id, data);
-                    return null; // Retorna null se o documento estiver incorreto
-                }
-                return { id: doc.id, ...data } as FinancialData; // Retorna FinancialData válido
-            }).filter(Boolean) as FinancialData[];  // Remove os nulls e força o tipo para FinancialData[]
-            console.log('Incomes recebidos:', incomeData);
-            setIncomes(incomeData); // Agora o TypeScript sabe que não há valores null no array
-        });
+        if (user) {
+            const incomesQuery = query(collection(db, 'incomes'), where('userId', '==', user.uid));
+            const expensesQuery = query(collection(db, 'expenses'), where('userId', '==', user.uid));
 
-        const unsubscribeExpenses = onSnapshot(collection(db, 'expenses'), (snapshot) => {
-            const expenseData = snapshot.docs.map(doc => {
-                const data = doc.data();
-                if (typeof data.description !== 'string' || typeof data.amount !== 'number') {
-                    console.warn(`Documento inválido encontrado na coleção 'expenses':`, doc.id, data);
-                    return null;
-                }
-                return { id: doc.id, ...data } as FinancialData;
-            }).filter(Boolean) as FinancialData[];  // Remove os nulls e força o tipo para FinancialData[]
-            console.log('Expenses recebidos:', expenseData);
-            setExpenses(expenseData);
-        });
+            const unsubscribeIncomes = onSnapshot(incomesQuery, (snapshot) => {
+                const incomeData = snapshot.docs.map(doc => ({
+                    id: doc.id,
+                    ...doc.data(),
+                })) as FinancialData[];
+                setIncomes(incomeData);
+            });
 
-        return () => {
-            unsubscribeIncomes();
-            unsubscribeExpenses();
-        };
-    }, []);
+            const unsubscribeExpenses = onSnapshot(expensesQuery, (snapshot) => {
+                const expenseData = snapshot.docs.map(doc => ({
+                    id: doc.id,
+                    ...doc.data(),
+                })) as FinancialData[];
+                setExpenses(expenseData);
+            });
+
+            return () => {
+                unsubscribeIncomes();
+                unsubscribeExpenses();
+            };
+        }
+    }, [user]);
 
     const addIncome = async (income: Omit<FinancialData, 'id'>) => {
-        try {
-            await addDoc(collection(db, 'incomes'), income);
-            console.log('Receita adicionada com sucesso:', income);
-        } catch (error) {
-            console.error('Erro ao adicionar receita:', error);
-        }
+        await addDoc(collection(db, 'incomes'), { ...income, userId: user?.uid });
     };
 
     const addExpense = async (expense: Omit<FinancialData, 'id'>) => {
-        try {
-            await addDoc(collection(db, 'expenses'), expense);
-            console.log('Despesa adicionada com sucesso:', expense);
-        } catch (error) {
-            console.error('Erro ao adicionar despesa:', error);
-        }
+        await addDoc(collection(db, 'expenses'), { ...expense, userId: user?.uid });
     };
 
     const removeIncome = async (id: string) => {
@@ -82,8 +71,16 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
         await deleteDoc(doc(db, 'expenses', id));
     };
 
+    const updateIncome = async (id: string, updatedIncome: Omit<FinancialData, 'id'>) => {
+        await updateDoc(doc(db, 'incomes', id), updatedIncome);
+    };
+
+    const updateExpense = async (id: string, updatedExpense: Omit<FinancialData, 'id'>) => {
+        await updateDoc(doc(db, 'expenses', id), updatedExpense);
+    };
+
     return (
-        <DataContext.Provider value={{ incomes, expenses, addIncome, addExpense, removeIncome, removeExpense }}>
+        <DataContext.Provider value={{ incomes, expenses, addIncome, addExpense, removeIncome, removeExpense, updateIncome, updateExpense }}>
             {children}
         </DataContext.Provider>
     );

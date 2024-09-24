@@ -1,32 +1,48 @@
-import React, { createContext, ReactNode, useContext, useState } from 'react';
+import React, { createContext, useContext, useState, useEffect } from 'react';
+import { getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged, setPersistence, browserLocalPersistence, User } from 'firebase/auth'; // Ajuste a importação correta
+import { auth } from '../firebase.ts'; // Certifique-se de que este caminho está correto para onde você inicializou o Firebase
 
 interface AuthContextType {
-    currentUser: string | null; // Usaremos o email como o usuário autenticado
-    login: (email: string, password: string) => void;
-    logout: () => void;
+    user: User | null; // Aqui usamos o tipo User do firebase/auth
+    login: (email: string, password: string) => Promise<void>;
+    logout: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
-    const [currentUser, setCurrentUser] = useState<string | null>(null);
+export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+    const [user, setUser] = useState<User | null>(null); // Usamos o tipo User do Firebase aqui
 
-    const login = (email: string, password: string) => {
-        if (email && password) {  // Verificação simples se o email e senha estão preenchidos
-            setCurrentUser(email);  // Define o email como usuário atual
-            alert('Login bem-sucedido!');  // Feedback para o usuário
-        } else {
-            alert('Por favor, insira um email e uma senha válidos.');
+    // Configurando a persistência de login para manter a sessão ativa
+    useEffect(() => {
+        setPersistence(auth, browserLocalPersistence)
+            .then(() => {
+                const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
+                    setUser(currentUser);
+                });
+                return () => unsubscribe();
+            })
+            .catch((error) => {
+                console.error('Erro ao definir a persistência de login: ', error);
+            });
+    }, []);
+
+    const login = async (email: string, password: string) => {
+        try {
+            await signInWithEmailAndPassword(auth, email, password);
+        } catch (error) {
+            console.error('Erro ao fazer login: ', error);
+            throw error;
         }
     };
 
-    const logout = () => {
-        setCurrentUser(null);
-        alert('Você saiu da sua conta.');
+    const logout = async () => {
+        await signOut(auth);
+        alert('Você foi desconectado com sucesso.');
     };
 
     return (
-        <AuthContext.Provider value={{ currentUser, login, logout }}>
+        <AuthContext.Provider value={{ user, login, logout }}>
             {children}
         </AuthContext.Provider>
     );
